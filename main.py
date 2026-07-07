@@ -1,4 +1,4 @@
-"""Single entry point for MaixCAM2.
+﻿"""Single entry point for MaixCAM2.
 
 Upload the whole camera_vision_firmware_maixcam2 folder to MaixCAM2 and run:
     python main.py
@@ -10,7 +10,6 @@ This avoids needing to run files inside tools/ directly on the board.
 import os
 import sys
 
-# Make imports stable when MaixVision runs this file from a different working directory.
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
 if _THIS_DIR not in sys.path:
     sys.path.insert(0, _THIS_DIR)
@@ -47,10 +46,6 @@ def _get_setpoint():
 
 
 def run_vision_main():
-    """Competition/MVP vision loop.
-
-    Capture image -> detect target -> draw overlay -> send @T frame to TI Bridge.
-    """
     print("[%s] version=%s mode=vision" % (app_config.APP_NAME, app_config.VERSION))
     setpoint_x, setpoint_y = _get_setpoint()
     print(
@@ -82,6 +77,7 @@ def run_vision_main():
     seq = 0
     last_send_ms = 0
     last_fps_ms = ticks_ms()
+    last_frame_ms = last_fps_ms
     fps = 0
     fps_count = 0
     lost_prev = True
@@ -95,8 +91,13 @@ def run_vision_main():
             seq = (seq + 1) & 0xFFFF
             img = cam.read()
             result = detector.detect(img)
+            display_img = getattr(result, "display_img", img)
 
             now = ticks_ms()
+            frame_dt = now - last_frame_ms
+            if frame_dt > 0:
+                fps = int(1000 / frame_dt)
+            last_frame_ms = now
             fps_count += 1
             if now - last_fps_ms >= 1000:
                 fps = fps_count
@@ -104,17 +105,17 @@ def run_vision_main():
                 last_fps_ms = now
 
             if camera_config.DRAW_OVERLAY:
-                draw_overlay(img, result, setpoint_x, setpoint_y, seq=seq, fps=fps)
+                draw_overlay(display_img, result, setpoint_x, setpoint_y, seq=seq, fps=fps)
             if camera_config.DEBUG_DISPLAY and seq % max(1, camera_config.DISPLAY_EVERY_N_FRAMES) == 0:
-                disp.show(img)
+                disp.show(display_img)
 
             if camera_config.SAVE_DEBUG_FRAMES:
                 if seq % max(1, camera_config.SAVE_FRAME_EVERY_N) == 0:
-                    save_frame_if_enabled(img, seq, "periodic")
+                    save_frame_if_enabled(display_img, seq, "periodic")
                 if camera_config.SAVE_ON_LOST and (not result.found) and not lost_prev:
-                    save_frame_if_enabled(img, seq, "lost")
+                    save_frame_if_enabled(display_img, seq, "lost")
                 if camera_config.SAVE_ON_REACQUIRED and result.found and lost_prev:
-                    save_frame_if_enabled(img, seq, "reacquired")
+                    save_frame_if_enabled(display_img, seq, "reacquired")
 
             if now - last_send_ms >= send_period_ms:
                 msg = build_target_message(
@@ -174,7 +175,6 @@ def run_vision_main():
 
 
 def run_selected_mode(mode):
-    """Dispatch debug/production modes from a single main.py entry."""
     mode = (mode or "vision").strip().lower()
     aliases = {
         "main": "vision",

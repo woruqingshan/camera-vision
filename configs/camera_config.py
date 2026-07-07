@@ -1,18 +1,17 @@
-# MaixCAM2 camera configuration for the first MVP.
-# Start with QVGA for lower latency. If the target is too small, switch to 640x480.
+﻿# MaixCAM2 camera configuration.
+# 160x120 matches the low-compute detector path and leaves headroom for later work.
 
-CAMERA_WIDTH = 320
-CAMERA_HEIGHT = 240
+CAMERA_WIDTH = 160
+CAMERA_HEIGHT = 120
 
-# MaixPy camera format. Keep as "rgb" for the first version because Maix image APIs
-# such as find_blobs use LAB thresholds derived from RGB images.
+# Keep RGB because the lightweight detector converts the camera frame through
+# image.image2cv(...) and then grayscale/adaptive-thresholds it.
 CAMERA_FORMAT = "rgb"  # "rgb" or "grayscale"
 
-# Image orientation correction. These are applied only if supported by the current
-# MaixPy Image API. If unsupported, README explains how to adjust after testing.
+# Image orientation correction.
 FLIP_X = False
 FLIP_Y = False
-ROTATE_DEG = 0  # 0, 90, 180, 270; not all APIs support all rotations
+ROTATE_DEG = 0
 
 # Display and debug settings.
 DEBUG_DISPLAY = True
