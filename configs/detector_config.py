@@ -32,3 +32,8 @@ ROI = None
 # This fallback is best-effort only; Maix native APIs remain the primary path.
 ENABLE_OPENCV_FALLBACK = True
 OPENCV_BLACK_THRESHOLD = 70
+
+# Diagnostics used by test_detector. Candidate summaries are capped to keep
+# terminal output readable and avoid excessive work on the board.
+DIAGNOSTIC_MAX_CANDIDATES = 4
+DIAGNOSTIC_PRINT_EVERY_N_FRAMES = 10

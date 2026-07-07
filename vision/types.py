@@ -15,6 +15,6 @@ class TargetResult:
 
     def __repr__(self):
         return ("TargetResult(found=%s, cx=%d, cy=%d, dx=%d, dy=%d, "
-                "confidence=%d, bbox=%s, method=%s)" % (
+                "confidence=%d, bbox=%s, method=%s, note=%s)" % (
                     self.found, self.cx, self.cy, self.dx, self.dy,
-                    self.confidence, self.bbox, self.method))
+                    self.confidence, self.bbox, self.method, self.note))

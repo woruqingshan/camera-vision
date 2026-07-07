@@ -1,7 +1,7 @@
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from configs import camera_config, calibration_config
+from configs import camera_config, calibration_config, detector_config
 from maix_platform.maix_camera import CameraSource
 from maix_platform.maix_display import DisplayAdapter
 from maix_platform.timebase import sleep_ms
@@ -10,22 +10,45 @@ from vision.debug_overlay import draw_overlay
 
 
 def main():
-    sx = camera_config.CAMERA_WIDTH // 2 if calibration_config.USE_IMAGE_CENTER else calibration_config.SETPOINT_X
-    sy = camera_config.CAMERA_HEIGHT // 2 if calibration_config.USE_IMAGE_CENTER else calibration_config.SETPOINT_Y
+    if calibration_config.USE_IMAGE_CENTER:
+        sx = camera_config.CAMERA_WIDTH // 2 + calibration_config.OFFSET_X
+        sy = camera_config.CAMERA_HEIGHT // 2 + calibration_config.OFFSET_Y
+    else:
+        sx = int(calibration_config.SETPOINT_X) + calibration_config.OFFSET_X
+        sy = int(calibration_config.SETPOINT_Y) + calibration_config.OFFSET_Y
     cam = CameraSource()
     disp = DisplayAdapter(enabled=True)
     cam.open()
     disp.open()
     detector = BlackBorderDetector(camera_config.CAMERA_WIDTH, camera_config.CAMERA_HEIGHT, sx, sy)
     print("detector test started. Aim MaixCAM2 at the black-border target.")
+    print("threshold=%s area=%.3f..%.3f aspect=%.2f..%.2f merge=%s roi=%s opencv_fallback=%s" % (
+        detector_config.BLACK_LAB_THRESHOLD,
+        detector_config.MIN_AREA_RATIO,
+        detector_config.MAX_AREA_RATIO,
+        detector_config.MIN_ASPECT,
+        detector_config.MAX_ASPECT,
+        detector_config.MERGE_BLOBS,
+        detector_config.ROI,
+        detector_config.ENABLE_OPENCV_FALLBACK,
+    ))
     seq = 0
     while seq < 500:
         seq += 1
         img = cam.read()
         result = detector.detect(img)
-        draw_overlay(img, result, sx, sy, seq=seq, fps=0)
+        draw_overlay(
+            img,
+            result,
+            sx,
+            sy,
+            seq=seq,
+            fps=0,
+            message="%s %s" % (result.method, result.note),
+        )
         disp.show(img)
-        if seq % 10 == 0:
+        print_every = max(1, int(detector_config.DIAGNOSTIC_PRINT_EVERY_N_FRAMES))
+        if seq % print_every == 0:
             print(result)
         sleep_ms(1)
     print("detector test finished")
