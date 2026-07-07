@@ -1,4 +1,4 @@
-from configs import serial_config as cfg
+﻿from configs import serial_config as cfg
 
 
 class UartSender:
@@ -52,6 +52,21 @@ class UartSender:
                 print("[uart] write failed:", exc)
         if self.console_fallback:
             print(text, end="")
+        return False
+
+    def write_bytes(self, data):
+        if isinstance(data, str):
+            data = data.encode()
+        else:
+            data = bytes(data)
+        if self.serial is not None:
+            try:
+                self.serial.write(data)
+                return True
+            except Exception as exc:
+                print("[uart] write failed:", exc)
+        if self.console_fallback:
+            print(" ".join("%02X" % value for value in data))
         return False
 
     def close(self):

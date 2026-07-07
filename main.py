@@ -20,7 +20,7 @@ from maix_platform.maix_camera import CameraSource
 from maix_platform.maix_display import DisplayAdapter
 from maix_platform.maix_uart import UartSender
 from maix_platform.maix_storage import save_frame_if_enabled
-from protocol.ti_bridge_protocol import build_target_message, build_debug_message
+from protocol.ti_bridge_protocol import build_target_message, build_target_packet, build_debug_message
 from vision.black_border_detector import BlackBorderDetector
 from vision.debug_overlay import draw_overlay
 
@@ -118,16 +118,31 @@ def run_vision_main():
                     save_frame_if_enabled(display_img, seq, "reacquired")
 
             if now - last_send_ms >= send_period_ms:
-                msg = build_target_message(
-                    seq,
-                    result.found,
-                    result.dx,
-                    result.dy,
-                    result.confidence,
-                    serial_config.INCLUDE_SEQUENCE,
-                )
-                uart.write_line(msg)
-                if serial_config.SEND_DEBUG_FRAME and result.found:
+                protocol_mode = getattr(serial_config, "PROTOCOL_MODE", "ascii_v2").lower()
+                if protocol_mode == "binary_v1":
+                    packet = build_target_packet(
+                        seq,
+                        result.found,
+                        result.cx,
+                        result.cy,
+                        result.dx,
+                        result.dy,
+                        result.confidence,
+                        fps,
+                    )
+                    uart.write_bytes(packet)
+                else:
+                    include_seq = serial_config.INCLUDE_SEQUENCE and protocol_mode != "ascii_legacy"
+                    msg = build_target_message(
+                        seq,
+                        result.found,
+                        result.dx,
+                        result.dy,
+                        result.confidence,
+                        include_seq,
+                    )
+                    uart.write_line(msg)
+                if protocol_mode != "binary_v1" and serial_config.SEND_DEBUG_FRAME and result.found:
                     uart.write_line(
                         build_debug_message(
                             seq,
@@ -160,7 +175,10 @@ def run_vision_main():
         print("stopped by keyboard")
     finally:
         try:
-            uart.write_line(build_target_message(seq, False, 0, 0, 0, serial_config.INCLUDE_SEQUENCE))
+            if getattr(serial_config, "PROTOCOL_MODE", "ascii_v2").lower() == "binary_v1":
+                uart.write_bytes(build_target_packet(seq, False, 0, 0, 0, 0, 0, fps))
+            else:
+                uart.write_line(build_target_message(seq, False, 0, 0, 0, serial_config.INCLUDE_SEQUENCE))
         except Exception:
             pass
         try:
@@ -223,3 +241,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
